@@ -136,19 +136,42 @@ div <- div %>%
   summarise(div_news = n())
 
 # Number of news consumption modes per participant
-### Adding total active time 
+#per_part <- df.url1 %>%
+#  group_by(panelist_id) %>%
+#  summarise(total_news_visit = sum(first_news),
+#            routine = sum(classification == 1),
+#            search = sum(classification == 2),
+#            social = sum(classification == 3),
+#            unknown = sum(classification == "unknown"),
+#            total_active_time = sum(active_seconds),
+#            n = n(),
+#            average_time = total_active_time / n()
+#  )
+#per_part <- merge(per_part, div, by = "panelist_id", all.x = TRUE)
+
+# Number of web-visits in categories of news consumption
 per_part <- df.url1 %>%
   group_by(panelist_id) %>%
   summarise(total_news_visit = sum(first_news),
             routine = sum(classification == 1),
             search = sum(classification == 2),
             social = sum(classification == 3),
-            unknown = sum(classification == "unknown"),
-            total_active_time = sum(active_seconds),
+            unknown = sum(classification == "unknown")
+  )
+
+# Number of web-visits, news visits and active time on desktop (from the visits data, excluding the participants who were excluded
+# from the analysis because no news consumption longer than 10s)
+per_part_visits <- df.visits[df.visits$d_kind == "desktop" & df.visits$pseudonym %in% per_part$panelist_id,] %>%
+  group_by(pseudonym) %>%
+  summarise(total_active_time = sum(duration),
             n = n(),
             average_time = total_active_time / n()
   )
+colnames(per_part_visits)[which(colnames(per_part_visits) == "pseudonym")] <- "panelist_id"
+
+per_part <- merge(per_part, per_part_visits, by = "panelist_id", all.x = TRUE)
 per_part <- merge(per_part, div, by = "panelist_id", all.x = TRUE)
+
 
 head(per_part)
 
