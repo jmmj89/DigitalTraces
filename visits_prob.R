@@ -98,7 +98,7 @@ d_train$classification <- as.factor(d_train$classification)
 
 # Training the model
 # Load Model
-# mod <- readRDS("visits_model.rds")
+ mod <- readRDS("visits_model.rds")
 
 # Train Model
 mod <- brm(classification ~ prev_social + prev_search + p_news + p_social + 
@@ -123,22 +123,35 @@ acc_social <- nrow(d_test[which(d_test$classification == "3" &
                                   d_test$predicted == "3"),])/nrow(d_test[which(d_test$classification == "3"),])
 acc_unknown <- nrow(d_test[which(d_test$classification == "unknown" &
                                   d_test$predicted == "unknown"),])/nrow(d_test[which(d_test$classification == "unknown"),])
-#acc_total <- nrow(d_test[which(d_test$classification == d_test$predicted),])/nrow(d_test)
-#acc_modal <- nrow(d_test[which(d_test$classification == "1"),])/nrow(d_test)
+acc_total <- nrow(d_test[which(d_test$classification == d_test$predicted),])/nrow(d_test)
+acc_modal <- nrow(d_test[which(d_test$classification == "1"),])/nrow(d_test)
 
 acc_routine
 acc_search
 acc_social
 acc_unknown
-#acc_total
-#acc_modal
+acc_total
+acc_modal
+
+#> acc_routine
+#[1] 0.5739199
+#> acc_search
+#[1] 0.4838439
+#> acc_social
+#[1] 0.2737069
+#> acc_unknown
+#[1] 0.304242
+#> acc_total
+#[1] 0.4609632
+#> acc_modal
+#[1] 0.4492121
 
 # Predicting for app and mobile data
 app <- app[which(app$news == 1),]
 mobile <- mobile[which(mobile$news == 1),]
-app <- app[, c("pseudonym", "visit_id", "classification", "prev_social", "prev_search", "p_news",
+app <- app[, c("pseudonym", "visit_id", "duration", "classification", "prev_social", "prev_search", "p_news",
                "p_social", "p_search", "p_after_social", "p_after_search")]
-mobile <- mobile[, c("pseudonym", "visit_id", "classification", "prev_social", "prev_search", "p_news",
+mobile <- mobile[, c("pseudonym", "visit_id", "duration", "classification", "prev_social", "prev_search", "p_news",
                "p_social", "p_search", "p_after_social", "p_after_search")]
 
 app$prev_search <- as.factor(app$prev_search)
@@ -189,21 +202,46 @@ write.csv(all_pred, "predicted_cats/Prediction_mobile_App.csv")
 
 per_part_mob <- all_pred %>%
   group_by(pseudonym) %>%
-  summarise(routine = sum(predicted == 1),
+  summarise(total_news_visit = n(),
+            routine = sum(predicted == 1),
             search = sum(predicted == 2),
             social = sum(predicted == 3),
             unknown = sum(predicted == "unknown"),
-            n = n())
+            total_active_time = sum(duration))
 colnames(per_part_mob)[colnames(per_part_mob) == "pseudonym"] <- "panelist_id"
 
-all_cat <- rbind(per_part[,-which(colnames(per_part) %in% c("average_time", "total_news_visit", "total_active_time", "div_news"))],
+# Combining with the results for desktop
+all_cat <- rbind(per_part[,-which(colnames(per_part) %in% c("average_time", "div_news", "n"))],
                  per_part_mob)
 all_cat <- all_cat %>%
   group_by(panelist_id) %>%
-  summarise(routine = sum(routine),
+  summarise(total_news_visit = sum(total_news_visit),
+            routine = sum(routine),
             search = sum(search),
             social = sum(social),
-            unknown = sum(unknown),
-            n = sum(n))           
-write.csv(all_cat, "predicted_cats/Number_of_visits_all_Category.csv")
+            unknown = sum(unknown))  
 
+# Number of web-visits, news visits and active time (from the visits data, excluding the participants who were excluded
+# from the analysis because no news consumption longer than 10s)
+all_cat_visits <- df.visits[df.visits$pseudonym %in% all_cat$panelist_id,] %>%
+  group_by(pseudonym) %>%
+  summarise(total_active_time = sum(duration),
+            n = n(),
+            average_time = total_active_time / n()
+  )
+colnames(all_cat_visits)[which(colnames(all_cat_visits) == "pseudonym")] <- "panelist_id"
+
+all_cat <- merge(all_cat, all_cat_visits, by = "panelist_id", all.x = TRUE)
+
+# Diversity of news consumption
+div <- all_visits[all_visits$pseudonym %in% all_cat$panelist_id & all_visits$news == 1,] %>%
+  group_by(pseudonym, domain) %>%
+  summarise()
+div <- div %>%
+  group_by(pseudonym) %>%
+  summarise(div_news = n())
+colnames(div)[which(colnames(div) == "pseudonym")] <- "panelist_id"
+
+all_cat <- merge(all_cat, div, by = "panelist_id", all.x = TRUE)
+
+write.csv(all_cat, "predicted_cats/Number_of_visits_all_Category.csv")
