@@ -45,36 +45,47 @@ country_ed
 
 #rename factor levels
 
-library(plyr)
-df.socdem$ISCED <- revalue(df.socdem$education_fact, 
+#library(plyr)
+#df.socdem$ISCED <- revalue(df.socdem$education_fact, 
                            
                                     #Germany
-                                    c("1: Volks-/Hauptschule"="2", 
-                                    "2: Weiterfuehrende Schule (Mittel-, Real-, Handelsschule)"="3", 
-                                    "3: Abitur, (Fach-)Hochschulreife"="4",
-                                    "4: No qualification (yet)" = "8",
-                                    
-                                    #UK
-                                    "1: GCSEs or equivalent" = "3",
-                                    "2: GNVQs or equivalent" = "3",
-                                    "3: A levels / AS levels / Scottish Highers / NVQ levels / Int. Baccalaureate" ="4",
-                                    "4: Undergraduate degree or equivalent" = "4",
-                                    "5: Postgraduate degree or equivalent" = "4",
-                                    "6: Professional Qualification" = "4",
-                                    "98: No formal education or qualifications (yet)" = "8",
-                                    
-                                    #France
-                                    "1: BEPC" ="2",
-                                    "2: BEP" ="3",
-                                    "3: CAP" ="3",
-                                    "4: BAC" ="4",
-                                    "5: Brevet de technicien" = "4",
-                                    "6: Bac+2 / DUT / BTS" ="4",
-                                    "7: bac+3 / Licence"= "4",
-                                    "8: Bac+5 / Master" = "4",
-                                    "97: Other education" ="8",
-                                    "NA: No qualification (yet)" ="8"
-                                    ))
+#                                    c("1: Volks-/Hauptschule"="2", 
+#                                    "2: Weiterfuehrende Schule (Mittel-, Real-, Handelsschule)"="3", 
+#                                    "3: Abitur, (Fach-)Hochschulreife"="4",
+#                                    "4: No qualification (yet)" = "8",
+#                                    
+#                                    #UK
+#                                    "1: GCSEs or equivalent" = "3",
+#                                    "2: GNVQs or equivalent" = "3",
+#                                    "3: A levels / AS levels / Scottish Highers / NVQ levels / Int. Baccalaureate" ="4",
+#                                    "4: Undergraduate degree or equivalent" = "4",
+#                                    "5: Postgraduate degree or equivalent" = "4",
+#                                    "6: Professional Qualification" = "4",
+#                                    "98: No formal education or qualifications (yet)" = "8",
+#                                    
+#                                    #France
+#                                    "1: BEPC" ="2",
+#                                    "2: BEP" ="3",
+#                                    "3: CAP" ="3",
+#                                    "4: BAC" ="4",
+#                                    "5: Brevet de technicien" = "4",
+#                                    "6: Bac+2 / DUT / BTS" ="4",
+#                                    "7: bac+3 / Licence"= "4",
+#                                    "8: Bac+5 / Master" = "4",
+#                                    "97: Other education" ="8",
+#                                    "NA: No qualification (yet)" ="8"
+#                                    ))
+
+df.socdem$ISCED <- forcats::fct_collapse(df.socdem$education_fact,
+                                         "2" = c("1: Volks-/Hauptschule", "1: BEPC"),
+                                         "3" = c("2: Weiterfuehrende Schule (Mittel-, Real-, Handelsschule)",
+                                                 "1: GCSEs or equivalent", "2: GNVQs or equivalent", "2: BEP", "3: CAP"),
+                                         "4" = c("3: Abitur, (Fach-)Hochschulreife", "4: Undergraduate degree or equivalent",
+                                                 "5: Postgraduate degree or equivalent", "6: Professional Qualification",
+                                                 "4: BAC", "5: Brevet de technicien", "6: Bac+2 / DUT / BTS", "7: bac+3 / Licence",
+                                                 "8: Bac+5 / Master", "3: A levels / AS levels / Scottish Highers / NVQ levels / Int. Baccalaureate"),
+                                         "8" = c("4: No qualification (yet)", "98: No formal education or qualifications (yet)",
+                                                 "97: Other education", "NA: No qualification (yet)"))
 
 
 
