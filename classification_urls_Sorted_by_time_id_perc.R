@@ -253,3 +253,27 @@ anova(unireg)
 
 step <- stepAIC(unireg, direction="both")
 step$anova # display results
+
+### Univariate regression by countries
+countries <- split(per_part, per_part$Country)
+France <- countries[[1]]
+UK <- countries[[2]]
+Germany <- countries[[3]]
+
+univarreg <- function(data) {
+  res <- list()
+  
+  unireg_act <- lm(cluster ~ total_news_visit + routine + search + social + unknown + total_active_time + n + average_time + div_news,
+               data = data)
+  res[[1]] <- summary(unireg_act)
+  res[[2]] <- anova(unireg_act)
+  
+  step_act <- stepAIC(unireg_act, direction="both")
+  res[[3]] <- step_act$anova
+  
+  names(res) <- c("Summary", "Anova", "Anova stepAIC")
+  res
+}
+France_res <- univarreg(France)
+UK_res <- univarreg(UK)
+Germany_res <- univarreg(Germany)
