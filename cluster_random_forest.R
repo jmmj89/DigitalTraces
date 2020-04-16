@@ -224,10 +224,10 @@ UK <- countries$UK
 Germany <- countries$Germany
 
 dir.create("random_forest_res", showWarnings = FALSE)
-rand_forest_res <- function(frml, data, dir, file_min_depth, file_multi_importance)
+rand_forest_res <- function(frml, data, dir, file_min_depth, file_multi_importance, file_multi_way_gini,
+                            file_interactions, file_interactions_relevant)
 {
   res <- list()
-  plotlist <- list()
   forest <- randomForest(frml, data = data, localImp = TRUE, na.action = na.omit)
   res[[1]] <- forest
   
@@ -246,7 +246,33 @@ rand_forest_res <- function(frml, data, dir, file_min_depth, file_multi_importan
   plot(multi_way_importance)
   dev.off()
   
-  names(res) <- c("forest", "importance_frame")
+  # 
+  png(filename = paste(dir, file_multi_way_gini, sep = "/"))
+  multi_way_importance_gini <- plot_multi_way_importance(importance_frame, x_measure = "accuracy_decrease",
+                                                                y_measure = "gini_decrease", size_measure = "p_value")
+  plot(multi_way_importance_gini)
+  dev.off()
+  
+  # Variable interactions
+  # 5 most important variables (minimal depth and number of trees)
+  top_vars <- important_variables(importance_frame, k = 5, measures = c("mean_min_depth", "no_of_trees"))
+  res[[3]] <- top_vars
+  interactions_frame <- min_depth_interactions(forest, top_vars)
+  res[[4]] <- interactions_frame
+  png(filename = paste(dir, file_interactions, sep = "/"))
+  interactions <- plot_min_depth_interactions(interactions_frame)
+  plot(interactions)
+  dev.off()
+  
+  # Interactions in relevant trees
+  interactions_frame <- min_depth_interactions(forest, top_vars,
+                                                        mean_sample = "relevant_trees", uncond_mean_sample = "relevant_trees")
+  png(filename = paste(dir, file_interactions_relevant, sep = "/"))
+  interactions_relevant <- plot_min_depth_interactions(interactions_frame)
+  plot(interactions_relevant)
+  dev.off()
+  
+  names(res) <- c("forest", "importance_frame", "top_vars", "interactions_frame")
   res
 }
 
@@ -254,13 +280,17 @@ rand_forest_res <- function(frml, data, dir, file_min_depth, file_multi_importan
 formula_pol <- as.formula(cluster ~ reg_vote + voted + change + undecided + polinterest.num + leftmidright.num + trust.EP + trust.nat.pol)
 
 set.seed(53)
-forest_pol <- rand_forest_res(formula_pol, full_dat, dir ="random_forest_res", "min_depth_pol.png", "multi_importance_pol.png")
+forest_pol <- rand_forest_res(formula_pol, full_dat, dir ="random_forest_res", "min_depth_pol.png", "multi_importance_pol.png",
+                              "multi_importance_gini_pol.png", "interactions_pol.png", "interactions_relevant_pol.png")
 forest_pol
 
 # Political explanatory variables per countries
-forest_pol_France <- rand_forest_res(formula_pol, France, dir ="random_forest_res", "min_depth_pol_fr.png", "multi_importance_pol_fr.png")
-forest_pol_UK <- rand_forest_res(formula_pol, UK, dir ="random_forest_res", "min_depth_pol_uk.png", "multi_importance_pol_uk.png")
-forest_pol_Germany <- rand_forest_res(formula_pol, Germany, dir ="random_forest_res", "min_depth_pol_de.png", "multi_importance_pol_de.png")
+forest_pol_France <- rand_forest_res(formula_pol, France, dir ="random_forest_res", "min_depth_pol_fr.png", "multi_importance_pol_fr.png",
+                                     "multi_importance_gini_pol_fr.png", "interactions_pol_fr.png", "interactions_relevant_pol_fr.png")
+forest_pol_UK <- rand_forest_res(formula_pol, UK, dir ="random_forest_res", "min_depth_pol_uk.png", "multi_importance_pol_uk.png",
+                                 "multi_importance_gini_pol_uk.png", "interactions_pol_uk.png", "interactions_relevant_pol_uk.png")
+forest_pol_Germany <- rand_forest_res(formula_pol, Germany, dir ="random_forest_res", "min_depth_pol_de.png", "multi_importance_pol_de.png",
+                                      "multi_importance_gini_pol_de.png", "interactions_pol_de.png", "interactions_relevant_pol_de.png")
 forest_pol_France
 forest_pol_UK 
 forest_pol_Germany
@@ -274,13 +304,17 @@ length(which(is.na(full_dat$children)))
 formula_pol_socio <- as.formula(cluster ~ reg_vote + voted + change + undecided + polinterest.num + leftmidright.num + trust.EP +
                                   trust.nat.pol + age_num + children + income + family + ISCED)
 
-forest_pol_socio <- rand_forest_res(formula_pol_socio, full_dat, dir ="random_forest_res", "min_depth_pol_socio.png", "multi_importance_pol_socio.png")
+forest_pol_socio <- rand_forest_res(formula_pol_socio, full_dat, dir ="random_forest_res", "min_depth_pol_socio.png", "multi_importance_pol_socio.png",
+                                    "multi_importance_gini_pol_socio.png", "interactions_pol_socio.png", "interactions_relevant_pol_socio.png")
 forest_pol_socio
 
 # Political and sociodemographical explanatory variables per countries
-forest_pol_socio_France <- rand_forest_res(formula_pol_socio, France, dir ="random_forest_res", "min_depth_pol_socio_fr.png", "multi_importance_pol_socio_fr.png")
-forest_pol_socio_UK <- rand_forest_res(formula_pol_socio, UK, dir ="random_forest_res", "min_depth_pol_socio_uk.png", "multi_importance_pol_socio_uk.png")
-forest_pol_socio_Germany <- rand_forest_res(formula_pol_socio, Germany, dir ="random_forest_res", "min_depth_pol_socio_de.png", "multi_importance_pol_socio_de.png")
+forest_pol_socio_France <- rand_forest_res(formula_pol_socio, France, dir ="random_forest_res", "min_depth_pol_socio_fr.png", "multi_importance_pol_socio_fr.png",
+                                           "multi_importance_gini_pol_socio_fr.png", "interactions_pol_socio_fr.png", "interactions_relevant_pol_socio_fr.png")
+forest_pol_socio_UK <- rand_forest_res(formula_pol_socio, UK, dir ="random_forest_res", "min_depth_pol_socio_uk.png", "multi_importance_pol_socio_uk.png",
+                                       "multi_importance_gini_pol_socio_uk.png", "interactions_pol_socio_uk.png", "interactions_relevant_pol_socio_uk.png")
+forest_pol_socio_Germany <- rand_forest_res(formula_pol_socio, Germany, dir ="random_forest_res", "min_depth_pol_socio_de.png", "multi_importance_pol_socio_de.png",
+                                            "multi_importance_gini_pol_socio_de.png", "interactions_pol_socio_de.png", "interactions_relevant_pol_socio_de.png")
 forest_pol_socio_France
 forest_pol_socio_UK 
 forest_pol_socio_Germany
