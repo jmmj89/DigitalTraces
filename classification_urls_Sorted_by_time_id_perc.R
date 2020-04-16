@@ -4,7 +4,7 @@ library(factoextra)
 library(pca3d)
 library(MASS)
 
-setwd("C:\\DesktopPCGamer\\D\\Data\\IPSDS\\Disciplinas\\Project Consulting\\Digital Traces\\DigitalTraces-master\\")
+setwd("C:\\DesktopPCGamer\\D\\Data\\IPSDS\\Disciplinas\\Project Consulting\\DigitalTraces_Project")
 
 source("read_data.R")
 source("Classification_news_visits.R") 
@@ -170,9 +170,9 @@ fviz_eig(res.pca)
 # )
 
 fig_var <- fviz_pca_var(res.pca, axes = c(1, 2),
-             col.var = "contrib", # Color by contributions to the PC
-             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
-             repel = TRUE     # Avoid text overlapping
+                        col.var = "contrib", # Color by contributions to the PC
+                        gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+                        repel = TRUE     # Avoid text overlapping
 )
 fig_var
 
@@ -224,7 +224,7 @@ pca3d(res.pca, group=factor(res.pca$x[,"cluster"]), fancy=FALSE, biplot=TRUE, pa
 ####
 
 
-# Multivariated regression
+# Multivariated regressions
 
 m1 <- lm(cbind(as.factor(cluster), as.factor(Changing_Vote)) ~ total_news_visit + routine + search + social + unknown + total_active_time + n + average_time + div_news,
          data = per_part)
@@ -247,7 +247,7 @@ step2$anova # display results
 ### Univariate Regression
 
 unireg <- lm(cluster ~ total_news_visit + routine + search + social + unknown + total_active_time + n + average_time + div_news,
-         data = per_part)
+             data = per_part)
 summary(unireg)
 anova(unireg)
 
@@ -264,7 +264,7 @@ univarreg <- function(data) {
   res <- list()
   
   unireg_act <- lm(cluster ~ total_news_visit + routine + search + social + unknown + total_active_time + n + average_time + div_news,
-               data = data)
+                   data = data)
   res[[1]] <- summary(unireg_act)
   res[[2]] <- anova(unireg_act)
   
@@ -277,3 +277,103 @@ univarreg <- function(data) {
 France_res <- univarreg(France)
 UK_res <- univarreg(UK)
 Germany_res <- univarreg(Germany)
+
+
+
+
+### New regressions
+
+
+
+glm_pol <- function(data) {
+  res <- list()
+  
+  unireg_act <- glm(cluster ~ reg_vote + voted + change + undecided + polinterest.num + leftmidright.num +
+                      trust.EP + trust.nat.pol, data = data, family=binomial(link='logit'))
+  
+  res[[1]] <- summary(unireg_act)
+  res[[2]] <- anova(unireg_act)
+  
+  step_act <- stepAIC(unireg_act, direction="both")
+  res[[3]] <- step_act$anova
+  
+  names(res) <- c("Summary", "Anova", "Anova stepAIC")
+  res
+}
+
+
+reg_pol <- glm_pol(data = full_dat) ##Is this the object?
+reg_pol_UK <- glm_pol(data = countries$UK)
+reg_pol_France <- glm_pol(data = countries$France)
+reg_pol_Germany <- glm_pol(data = countries$Germany)
+
+
+
+
+# models 5,6,7 and 8
+glm_socdem <- function(data) {
+  res <- list()
+  
+  unireg_act <- glm(cluster ~ reg_vote + voted + change + undecided + polinterest.num + leftmidright.num + trust.EP +
+                      trust.nat.pol + gender + children + income + family + ISCED + age_num, data = data, 
+                    # if I remove + age_num it works...
+                    family=binomial(link='logit'))
+  
+  res[[1]] <- summary(unireg_act)
+  res[[2]] <- anova(unireg_act)
+  
+  step_act <- stepAIC(unireg_act, direction="both")
+  res[[3]] <- step_act$anova
+  
+  names(res) <- c("Summary", "Anova", "Anova stepAIC")
+  res
+}
+
+
+#Error in stepAIC
+#number of rows in use has changed: remove missing values?
+
+getMode <- function(x) {
+  unique_values <- unique(x)
+  unique_values[which.max(tabulate(match(x, unique_values)))]
+}
+
+
+#Imputation
+#Trying to remove the NA values
+
+
+imputation <- function(data){
+  for (var in 1:ncol(data)) {
+    if (class(data[,var])=="numeric") {
+      data[is.na(data[,var]),var] <- mean(data[,var], na.rm = TRUE)
+    } else if (class(full_dat_na[,var]) %in% c("character", "factor")) {
+      data[is.na(data[,var]),var] <- getMode(data[,var])
+    }
+    if(length(which(is.na(data[,var]))) > 0){
+      cat(paste0("\n",var))
+    }
+  }
+  return(data)
+}
+
+full_dat_na <- imputation(full_dat)
+countries$UK <- imputation(countries$UK)
+countries$France <- imputation(countries$France)
+countries$Germany <- imputation(countries$Germany)
+
+
+# #num_age doesnt fixed somehow.
+# var <- 29
+# full_dat_na[which(is.na(full_dat_na[,var])),var] <- mean(full_dat_na[,29], na.rm = TRUE)
+# #Now it's fixed.
+# full_dat_na[,29] <- as.factor()
+
+
+
+
+
+reg_socdem <- glm_socdem(data = full_dat_na)
+reg_socdem_UK <- glm_socdem(data = countries$UK)
+reg_socdem_France <- glm_socdem(data = countries$France)
+reg_socdem_Germany <- glm_socdem(data = countries$Germany)

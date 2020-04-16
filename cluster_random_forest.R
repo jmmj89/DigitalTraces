@@ -8,12 +8,12 @@ library(randomForest)
 library(randomForestExplainer)
 
 
-# setwd("C:\\DesktopPCGamer\\D\\Data\\IPSDS\\Disciplinas\\Project Consulting\\Digital Traces\\DigitalTraces-master\\")
+setwd("C:\\DesktopPCGamer\\D\\Data\\IPSDS\\Disciplinas\\Project Consulting\\DigitalTraces_Project\\")
+dir()
 
-source("read_data.R")
-source("Classification_news_visits.R")
-source("ISCED_coding.R")
-source("data_prep.R")
+source("read_data.R", encoding = "UTF-8")
+source("ISCED_coding.R", encoding = "UTF-8")
+source("data_prep.R", encoding = "UTF-8")
 
 set.seed(1)
 
