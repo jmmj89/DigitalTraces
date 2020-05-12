@@ -7,7 +7,13 @@ library(nnet)
 library(randomForest)
 library(randomForestExplainer)
 
-all_cat <- read.csv("predicted_cats/Number_of_visits_all_Category.csv")
+source("read_data.R")
+source("Classification_news_visits.R")
+source("ISCED_coding.R")
+source("data_prep.R")
+source("visits_prob.R")
+
+#all_cat <- read.csv("predicted_cats/Number_of_visits_all_Category.csv")
 
 head(all_cat)
 
