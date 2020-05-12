@@ -2,7 +2,6 @@ source("read_data.R")
 source("Classification_news_visits.R")
 source("ISCED_coding.R")
 source("data_prep.R")
-source("visits_prob.R")
 
 ############################
 ## Visits data
@@ -58,12 +57,12 @@ news_con_m <- news_exp(per_part_mob)
 cat_n_m <- cat_news(news_con_m, "Mobile")
 
 # total
-news_con_t <- news_exp(all_cat)
-cat_n_t <- cat_news(news_con_t, "Total")
+#news_con_t <- news_exp(all_cat)
+#cat_n_t <- cat_news(news_con_t, "Total")
 
-cat_n <- rbind(cat_n_d, cat_n_m, cat_n_t)
+#cat_n <- rbind(cat_n_d, cat_n_m, cat_n_t)
 
-news_con <- merge(exp_dat, all_cat, by = "panelist_id", all.x = TRUE)
+#news_con <- merge(exp_dat, all_cat, by = "panelist_id", all.x = TRUE)
 
 # Descriptive statistics per country
 per_c_f <- function(data, kind)
@@ -228,114 +227,6 @@ pol_vars$percentage[which(pol_vars$country == "Germany")] <-
 pol_vars$percentage[which(pol_vars$country == "Total")] <-
   100 * pol_vars$value[which(pol_vars$country == "Total")]/total_news$n[1]
 
-# Preparation data with clusters
-# Clusters and countries
-clus_desc <- function(data, kind, dat_per_c)
-{
-  res <- merge(data, exp_dat, by = "panelist_id") %>%
-    group_by(country, cluster) %>%
-    summarise(participants = n(),
-              total_news_visit = sum(total_news_visit),
-              routine = sum(routine),
-              search = sum(search),
-              social = sum(social),
-              unknown = sum(unknown),
-              webvisits = sum(n),
-              voted = sum(voted == "Yes"),
-              left = sum(leftmidright == "left"),
-              middle = sum(leftmidright == "middle"),
-              right = sum(leftmidright == "right"),
-              interested_in_politics = sum(polinterest == 1))
-  res <- merge(res, dat_per_c[, c("country", "n_news")], by = "country", all.x = TRUE)
-  res_percentage <- cbind("participants" = (res$participants/res$n_news) * 100,
-                                   (res[,c("routine", "search", "social", "unknown")]/res$total_news_visit) * 100,
-                                   (res[,c("voted", "left", "middle", "right", "interested_in_politics")]/res$participants) * 100)
-  colnames(res_percentage) <- paste("p_", colnames(res_percentage), sep="")
-  res <- cbind(res, res_percentage)
-  res$kind <- kind
-  return(res)
-}
-
-# desktop
-clus_d <- merge(per_part, per_part_p[,c("panelist_id", "cluster")], by = "panelist_id")
-clus_country_d <- clus_desc(clus_d, "Desktop", per_c_d)
-
-# mobile
-clus_m <- merge(per_part_mob, per_part_p[,c("panelist_id", "cluster")], by = "panelist_id")
-clus_country_m <- clus_desc(clus_m, "Mobile", per_c_m)
-
-# total
-clus_t <- merge(all_cat, per_part_p[,c("panelist_id", "cluster")], by = "panelist_id")
-clus_country_t <- clus_desc(clus_t, "Total", per_c_t)
-
-clus_country <- rbind(clus_country_d, clus_country_m, clus_country_t)
-
-# Number of clusters
-n_clusters <- length(unique(clus_country$cluster))
-
-# Political orientation per clusters and countries
-clus_pol_c <- merge(clus_t, exp_dat, by = "panelist_id") %>%
-  group_by(country, cluster, leftmidright.num) %>%
-  summarise(n_pol = n())
-clus_pol_c <- merge(clus_pol_c, clus_country[, c("country", "cluster", "participants")],
-                    by = c("country", "cluster"), all.x = TRUE)
-clus_pol_c$p_pol <- (clus_pol_c$n_pol/clus_pol_c$participants) * 100
-clus_pol_c$leftmidright.num <- as.factor(clus_pol_c$leftmidright.num)
-
-# Political orientation overall
-clus_pol_t <- merge(clus_t, exp_dat, by = "panelist_id") %>%
-  group_by(cluster, leftmidright.num) %>%
-  summarise(n_pol = n())
-clus_pol_t <- merge(clus_pol_c, clus_country[, c("country", "cluster", "participants")],
-                    by = c("country", "cluster"), all.x = TRUE)
-clus_pol_c$p_pol <- (clus_pol_c$n_pol/clus_pol_c$participants) * 100
-clus_pol_c$leftmidright.num <- as.factor(clus_pol_c$leftmidright.num)
-
-# Only clusters (without countries)
-clus_desc_total <- function(data, kind)
-{
-  res <- merge(data, exp_dat, by = "panelist_id") %>%
-    group_by(cluster) %>%
-    summarise(participants = n(),
-              total_news_visit = sum(total_news_visit),
-              routine = sum(routine),
-              search = sum(search),
-              social = sum(social),
-              unknown = sum(unknown),
-              webvisits = sum(n),
-              voted = sum(voted == "Yes"),
-              left = sum(leftmidright == "left"),
-              middle = sum(leftmidright == "middle"),
-              right = sum(leftmidright == "right"),
-              interested_in_politics = sum(polinterest == 1))
-  res_percentage <- cbind("participants" = (res$participants/desc_summary["n_participants"]) * 100,
-                           (res[,c("routine", "search", "social", "unknown")]/res$total_news_visit) * 100,
-                           (res[,c("voted", "left", "middle", "right", "interested_in_politics")]/res$participants) * 100)
-  colnames(res_percentage) <- paste("p_", colnames(res_percentage), sep="")
-  res <- cbind(res, res_percentage)
-  res$kind <- kind
-  return(res)
-}
-
-# desktop
-clus_total_d <- clus_desc_total(clus_d, "Desktop")
-
-# mobile
-clus_total_m <- clus_desc_total(clus_m, "Mobile")
-
-# total
-clus_total_t <- clus_desc_total(clus_t, "Total")
-
-clus_total <- rbind(clus_total_d, clus_total_m, clus_total_t)
-
-# Political orientation per clusters
-clus_pol <- merge(clus_t, exp_dat, by = "panelist_id") %>%
-  group_by(cluster, leftmidright.num) %>%
-  summarise(n_pol = n())
-clus_pol <- merge(clus_pol, clus_total[, c("cluster", "participants")], by = "cluster", all.x = TRUE)
-clus_pol$p_pol <- (clus_pol$n_pol/clus_pol$participants) * 100
-clus_pol$leftmidright.num <- as.factor(clus_pol$leftmidright.num)
-
 ## Data visualization
 dir.create("descriptives", showWarnings = FALSE)
 
@@ -404,8 +295,13 @@ ggplot(data = per_c_long, aes(fill = number, y = count, x = country)) +
 dev.off()
 
 # News consumtion in the categories
+cat_n_v <- c(colSums(news_con[,c("routine", "search", "social", "unknown")], na.rm = TRUE))
+cat_n_v <- as.data.frame(cbind(names(cat_n_v), cat_n_v))
+colnames(cat_n_v) <- c("Mode", "Number")
+cat_n_v$Number <- as.numeric(as.character(cat_n_v$Number))
+
 png(filename = "descriptives/number_of_webvisits_in_cat.png", width=400, height=300)
-ggplot(as.data.frame(cat_n), aes(Mode, as.numeric(Number))) +
+ggplot(as.data.frame(cat_n_v), aes(Mode, as.numeric(Number))) +
   geom_bar(stat = "identity", fill = "red", width = 0.6) +
   labs(title = "Number of news-visits on desktop\nin the 4 categories of news engagement modes") +
   xlab(NULL) +
@@ -454,86 +350,6 @@ plot_pol("leftmidright.num", "Political orientation (1 - Right, 11 - Left)", 45,
 plot_pol("trust.EP", "Trust in EP", 30, 3)
 plot_pol("trust.nat.pol", "Trust in the national parliament/other governmental institutions", 30, 3)
 
-# Clusters
-cluster_summary <- gather(clus_total, type, percentage, p_routine:p_unknown, factor_key = TRUE)
-
-png(filename = "descriptives/cluster_news.png", width=1000, height=600)
-ggplot(cluster_summary, aes(x = type, y = percentage)) +
-  geom_bar(stat = "identity", fill = "red") +
-  labs(title = "News Consumption Types per Clusters") +
-  xlab(NULL) +
-  ylab(NULL) +
-  scale_x_discrete(breaks = c("p_routine", "p_search", "p_social", "p_unknown"),
-                   labels = c("Rotuine", "Search Engine", "Social Sites", "Unknown")) +
-  scale_y_continuous(limits = c(0, 80), breaks = c(0, 20, 40, 60, 80),
-                     labels = c("0%", "20%", "40%", "60%", "80%")) +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5),
-        panel.spacing = unit(2, "lines"),
-        axis.text.x = element_text(angle = 45, hjust = 1),
-        plot.margin = unit(c(1,1,1,1.5), "cm")) +
-  facet_grid(. ~ cluster)
-dev.off()
-
-# Cluster per countries
-cluster_summary <- gather(clus_country, type, percentage, p_routine:p_unknown, factor_key = TRUE)
-
-png(filename = "descriptives/cluster_countries_news.png", width=1000, height=600)
-ggplot(cluster_summary, aes(x = type, y = percentage)) +
-  geom_bar(stat = "identity", fill = "red") +
-  labs(title = "News Consumption Types per Clusters and Countries") +
-  xlab(NULL) +
-  ylab(NULL) +
-  scale_x_discrete(breaks = c("p_routine", "p_search", "p_social", "p_unknown"),
-                   labels = c("Rotuine", "Search Engine", "Social Sites", "Unknown")) +
-  scale_y_continuous(limits = c(0, 80), breaks = c(0, 20, 40, 60, 80),
-                     labels = c("0%", "20%", "40%", "60%", "80%")) +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5),
-        panel.spacing = unit(2, "lines"),
-        axis.text.x = element_text(angle = 45, hjust = 1),
-        plot.margin = unit(c(1,1,1,1.5), "cm")) +
-  facet_wrap(country ~ cluster, ncol = n_clusters)
-dev.off()
-
-# Political orientation per clusters
-png(filename = "descriptives/cluster_pol.png", width=600, height=500)
-ggplot(clus_pol, aes(x = leftmidright.num, y = p_pol)) +
-  geom_bar(stat = "identity", fill = "red") +
-  labs(title = "Political Orientation per Clusters") +
-  xlab(NULL) +
-  ylab(NULL) +
-  scale_x_discrete(breaks = c("1", "6", "11"), labels = c("right", "middle", "left"),
-                     limits = rev(levels(clus_pol$leftmidright.num))) +
-  scale_y_continuous(limits = c(0, 50), breaks = c(0, 10, 20, 30, 40, 50),
-                     labels = c("0%", "10%", "20%", "30%", "40%", "50%")) +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5),
-        panel.spacing = unit(2, "lines"),
-        axis.text.x = element_text(angle = 45, hjust = 1),
-        plot.margin = unit(c(1,1,1,1.5), "cm")) +
-  facet_wrap(. ~ cluster, ncol = round(n_clusters/2, 0))
-dev.off()
-
-# Political orientation per clusters and countries
-png(filename = "descriptives/cluster_countries_pol.png", width=1000, height=800)
-ggplot(clus_pol_c, aes(x = leftmidright.num, y = p_pol)) +
-  geom_bar(stat = "identity", fill = "red") +
-  labs(title = "Political Orientation per Clusters and Countries") +
-  xlab(NULL) +
-  ylab(NULL) +
-  scale_x_discrete(breaks = c("1", "6", "11"), labels = c("right", "middle", "left"),
-                   limits = rev(levels(clus_pol_c$leftmidright.num))) +
-  scale_y_continuous(limits = c(0, 60), breaks = c(0, 10, 20, 30, 40, 50),
-                     labels = c("0%", "10%", "20%", "30%", "40%", "50%")) +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5),
-        panel.spacing = unit(2, "lines"),
-        axis.text.x = element_text(angle = 45, hjust = 1),
-        plot.margin = unit(c(1,1,1,1.5), "cm")) +
-  facet_wrap(country ~ cluster, ncol = n_clusters)
-dev.off()
-
 ## Data tables
 # News consumption types and interest in politics oritentation per countries and overall
 per_c
@@ -543,14 +359,6 @@ total_news
 per_c_pol_ori
 t_pol_ori
 
-# News consumption types and interest in politics oritentation per clusters and per clusters and countries
-clus
-clus_country
-
-# Political orientation per countries and overall
-clus_pol
-clus_pol_c
-
 # Number of news visits in the categories
 cat_n_v <- c(colSums(news_con[,c("routine", "search", "social", "unknown")], na.rm = TRUE))
 cat_n_v <- as.data.frame(cbind(names(cat_n_v), cat_n_v))
@@ -559,9 +367,9 @@ cat_n_v$Number <- as.numeric(as.character(cat_n_v$Number))
 
 # News consumtion in the categories
 png(filename = "descriptives/number_of_webvisits_in_cat_visits.png", width=400, height=300)
-ggplot(as.data.frame(cat_n_v), aes(Mode, as.numeric(Number))) +
+ggplot(as.data.frame(cat_n), aes(Mode, as.numeric(Number))) +
   geom_bar(stat = "identity", fill = "red", width = 0.6) +
-  labs(title = "Number of news-visits on desktop\nin the 4 categories of news engagement modes\nExtended with mobile data") +
+  labs(title = "Number of news-visits\nin the 4 categories of news engagement modes\nExtended with mobile data") +
   xlab(NULL) +
   ylab(NULL) +
   scale_x_discrete(breaks = c("routine", "search", "social", "unknown"),
@@ -572,4 +380,3 @@ ggplot(as.data.frame(cat_n_v), aes(Mode, as.numeric(Number))) +
         axis.text.x = element_text(angle = 45, hjust = 1, size = 12),
         axis.text.y = element_text(size = 12))
 dev.off()
-
