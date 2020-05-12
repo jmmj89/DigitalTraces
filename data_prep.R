@@ -37,7 +37,22 @@ exp_dat <- merge(df.survey[,c("panelist_id", "country", "reg_vote", "has.twitter
                   df.socdem[,c("panelist_id", "gender", "age_num", "age_class", "children", "income", "family",
                                "education", "ISCED")], by = "panelist_id", all.x = TRUE)
 
+# Preparation of visits data
+all_visits <- merge(df.visits, df.url1[df.url1$first_news == 1, c("web_visits_id", "classification")], by.x = "visit_id",
+                    by.y = "web_visits_id", all.x = TRUE)
+all_visits <- all_visits[-which(all_visits$duration < 10),]
+all_visits <- all_visits[order(all_visits$pseudonym, all_visits$used_at),]
 
+# News, Social and search categories
+all_visits$news <- 0
+all_visits$social <- 0
+all_visits$search <- 0
+
+all_visits[all_visits$d_kind %in% c("desktop", "mobile") & all_visits$category %in% selected,]$news <- 1
+all_visits[all_visits$d_kind == "app" & grepl("News", all_visits$category, ignore.case=TRUE),]$news <- 1
+
+all_visits$social[which(grepl("social", all_visits$category, ignore.case=TRUE))] <- 1
+all_visits$search[which(grepl("Search", all_visits$category, ignore.case=TRUE))] <- 1
 
 
 
