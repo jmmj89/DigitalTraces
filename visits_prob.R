@@ -1,23 +1,6 @@
 library(brms)
 library(lubridate)
 
-
-all_visits <- merge(df.visits, df.url1[df.url1$first_news == 1, c("web_visits_id", "classification")], by.x = "visit_id",
-                by.y = "web_visits_id", all.x = TRUE)
-all_visits <- all_visits[-which(all_visits$duration < 10),]
-all_visits <- all_visits[order(all_visits$pseudonym, all_visits$used_at),]
-
-# News, Social and search categories
-all_visits$news <- 0
-all_visits$social <- 0
-all_visits$search <- 0
-
-all_visits[all_visits$d_kind %in% c("desktop", "mobile") & all_visits$category %in% selected,]$news <- 1
-all_visits[all_visits$d_kind == "app" & grepl("News", all_visits$category, ignore.case=TRUE),]$news <- 1
-
-all_visits$social[which(grepl("social", all_visits$category, ignore.case=TRUE))] <- 1
-all_visits$search[which(grepl("Search", all_visits$category, ignore.case=TRUE))] <- 1
-
 # Splitting the data by kind
 prev_visit <- function(kind)
 {
@@ -96,15 +79,15 @@ d_test <- d_news[-which(d_news$pseudonym %in% sel_part), c("pseudonym", "visit_i
 
 d_train$classification <- as.factor(d_train$classification)
 
-# Training the model
+# Training or loading the model
 # Load Model
  mod <- readRDS("visits_model.rds")
 
 # Train Model
-mod <- brm(classification ~ prev_social + prev_search + p_news + p_social + 
-             p_search + p_after_social + p_after_search + (1|pseudonym), d_train, family = "categorical", iter = 3000)
+#mod <- brm(classification ~ prev_social + prev_search + p_news + p_social + 
+#             p_search + p_after_social + p_after_search + (1|pseudonym), d_train, family = "categorical", iter = 3000)
 
-saveRDS(mod, "visits_model.rds")
+#saveRDS(mod, "visits_model.rds")
 
 # Evaluating the model
 d_test$classification <- as.factor(d_test$classification)
@@ -126,12 +109,12 @@ acc_unknown <- nrow(d_test[which(d_test$classification == "unknown" &
 acc_total <- nrow(d_test[which(d_test$classification == d_test$predicted),])/nrow(d_test)
 acc_modal <- nrow(d_test[which(d_test$classification == "1"),])/nrow(d_test)
 
-acc_routine
-acc_search
-acc_social
-acc_unknown
-acc_total
-acc_modal
+round(acc_routine, 3)
+round(acc_search, 3)
+round(acc_social, 3)
+round(acc_unknown, 3)
+round(acc_total, 3)
+round(acc_modal, 3)
 
 #> acc_routine
 #[1] 0.5739199
@@ -199,6 +182,7 @@ mobile <- cbind(mobile, pred)
 all_pred <- rbind(app, mobile)
 dir.create("predicted_cats", showWarnings = FALSE)
 write.csv(all_pred, "predicted_cats/Prediction_mobile_App.csv")
+#all_pred <- read.csv("predicted_cats/Prediction_mobile_App.csv")
 
 per_part_mob <- all_pred %>%
   group_by(pseudonym) %>%
@@ -245,3 +229,5 @@ colnames(div)[which(colnames(div) == "pseudonym")] <- "panelist_id"
 all_cat <- merge(all_cat, div, by = "panelist_id", all.x = TRUE)
 
 write.csv(all_cat, "predicted_cats/Number_of_visits_all_Category.csv")
+
+#all_cat <- read.csv("predicted_cats/Number_of_visits_all_Category.csv")
