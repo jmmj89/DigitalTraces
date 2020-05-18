@@ -237,103 +237,93 @@ rownames(pol_socio_Germany) <-"pol_socio_Germany"
 pol_socio <- rbind(total_pol_socio, pol_socio_France, pol_socio_Germany, pol_socio_UK)
 str(pol_socio)
 
-### Random Forest
-# https://cran.rstudio.com/web/packages/randomForestExplainer/vignettes/randomForestExplainer.html
+# Effect stars
+library(nnet)
+library(EffectStars2)
+library(graphics)
 
-# Splitting the data per countries
+#Function to prepare political effectstars
 
-dir.create("random_forest_combined_res", showWarnings = FALSE)
-rand_forest_res <- function(frml, data, dir, file_min_depth, file_multi_importance, file_multi_way_gini,
-                            file_interactions, file_interactions_relevant)
+effectstars_pol <- function(model)
 {
-  res <- list()
-  forest <- randomForest(frml, data = data, localImp = TRUE, na.action = na.omit)
-  res[[1]] <- forest
+  risk_ratio <- exp(coef(model)) #Get the Beta coefficients (risk ratios)   
+  e_star_risk_ratio <- t(risk_ratio) #Transpose the risk ratio matrix in order to get the right format to feed into Effectstars2
   
-  #Distribution of minimal depth
-  min_depth_frame <- min_depth_distribution(forest)
-  min_depth <- plot_min_depth_distribution(min_depth_frame)
-  png(filename = paste(dir, file_min_depth, sep = "/"))
-  plot(min_depth)
-  dev.off()
+  z <- summary(model)$coefficients/summary(model)$standard.errors #z calculation for the regression coefficients
+  p <- (1 - pnorm(abs(z), 0, 1)) * 2 #2-tailed z test
+  p_values <- formatC(p, format="f", digits=3) #format p
+  labels <- matrix(paste0(rep(c("Search", "Social", "Unknown"), nrow(e_star_risk_ratio)), "\n(", p_values, ")"),
+                   byrow = T, ncol = 3) #create labels containing the response categories and all p-values
+  ctrl <- star.ctrl(lwd.circle = 3, col.circle = "lightblue", #graphical formatting
+                    lty.circle = 5, col.fill = "lightgrey", lwd.star = 1.8,
+                    cex.main = 1.5, cex.labels = 1.2, col.main = "black",
+                    col.labels = "black", col.star = "black", dist.labels = 1.1, 
+                    font.labels = 1, radius = 1)
+  effectstars(e_star_risk_ratio,
+              names = c("Intercept", "Registered voters", "Voted", rep("Changed mind", 3), 
+                        "Undecided", "Polinterest", "Leftmidright", "Trust in EP", "Trust in NP"), #name of the star
+              subs = c("", rep("(yes)", 2),  "(did not change)", "(did not vote)", "(doesn't remember)", "(yes)" , rep("", 4)), 
+              #category labels of the predictors 
+              labels = labels, #dependent variable categories
+              control = ctrl) #graphic above
   
-  # Various variable importance measures
-  importance_frame <- measure_importance(forest)
-  res[[2]] <- importance_frame
-  multi_way_importance <- plot_multi_way_importance(importance_frame, size_measure = "no_of_nodes")
-  png(filename = paste(dir, file_multi_importance, sep = "/"))
-  plot(multi_way_importance)
-  dev.off()
   
-  # 
-  png(filename = paste(dir, file_multi_way_gini, sep = "/"))
-  multi_way_importance_gini <- plot_multi_way_importance(importance_frame, x_measure = "accuracy_decrease",
-                                                         y_measure = "gini_decrease", size_measure = "p_value")
-  plot(multi_way_importance_gini)
-  dev.off()
-  
-  # Variable interactions
-  # 5 most important variables (minimal depth and number of trees)
-  top_vars <- important_variables(importance_frame, k = 5, measures = c("mean_min_depth", "no_of_trees"))
-  res[[3]] <- top_vars
-  interactions_frame <- min_depth_interactions(forest, top_vars)
-  res[[4]] <- interactions_frame
-  png(filename = paste(dir, file_interactions, sep = "/"))
-  interactions <- plot_min_depth_interactions(interactions_frame)
-  plot(interactions)
-  dev.off()
-  
-  # Interactions in relevant trees
-  interactions_frame <- min_depth_interactions(forest, top_vars,
-                                               mean_sample = "relevant_trees", uncond_mean_sample = "relevant_trees")
-  png(filename = paste(dir, file_interactions_relevant, sep = "/"))
-  interactions_relevant <- plot_min_depth_interactions(interactions_frame)
-  plot(interactions_relevant)
-  dev.off()
-  
-  names(res) <- c("forest", "importance_frame", "top_vars", "interactions_frame")
-  res
 }
 
-### Political explanatory variables
-formula_pol <- as.formula(cluster ~ reg_vote + voted + change + undecided + polinterest.num + leftmidright.num + trust.EP + trust.nat.pol)
+#Plot political effectstars
+effectstars_pol(mod_pol)
+effectstars_pol(mod_pol_France)
+effectstars_pol(mod_pol_Germany)
+effectstars_pol(mod_pol_UK)
 
-set.seed(53)
-forest_pol <- rand_forest_res(formula_pol, full_dat, dir ="random_forest_res", "min_depth_pol.png", "multi_importance_pol.png",
-                              "multi_importance_gini_pol.png", "interactions_pol.png", "interactions_relevant_pol.png")
-forest_pol
+#Function to prepare political and sociodemographic effectstars
 
-# Political explanatory variables per countries
-forest_pol_France <- rand_forest_res(formula_pol, France, dir ="random_forest_res", "min_depth_pol_fr.png", "multi_importance_pol_fr.png",
-                                     "multi_importance_gini_pol_fr.png", "interactions_pol_fr.png", "interactions_relevant_pol_fr.png")
-forest_pol_UK <- rand_forest_res(formula_pol, UK, dir ="random_forest_res", "min_depth_pol_uk.png", "multi_importance_pol_uk.png",
-                                 "multi_importance_gini_pol_uk.png", "interactions_pol_uk.png", "interactions_relevant_pol_uk.png")
-forest_pol_Germany <- rand_forest_res(formula_pol, Germany, dir ="random_forest_res", "min_depth_pol_de.png", "multi_importance_pol_de.png",
-                                      "multi_importance_gini_pol_de.png", "interactions_pol_de.png", "interactions_relevant_pol_de.png")
-forest_pol_France
-forest_pol_UK 
-forest_pol_Germany
+effectstars_pol_socio <- function(model)
+{
+  risk_ratio <- exp(coef(model)) #Get the Beta coefficients (risk ratios)   
+  e_star_risk_ratio <- t(risk_ratio) #Transpose the risk ratio matrix in order to get the right format to feed into Effectstars2
+  
+  z <- summary(model)$coefficients/summary(model)$standard.errors #z calculation for the regression coefficients
+  p <- (1 - pnorm(abs(z), 0, 1)) * 2 #2-tailed z test
+  p_values <- formatC(p, format="f", digits=3) #format p
+  labels <- matrix(paste0(rep(c("Search", "Social", "Unknown"), nrow(e_star_risk_ratio)), "\n(", p_values, ")"),
+                   byrow = T, ncol = 3) #create labels containing the response categories and all p-values
+  ctrl <- star.ctrl(lwd.circle = 3, col.circle = "lightblue", #graphical formatting
+                    lty.circle = 5, col.fill = "lightgrey", lwd.star = 1.8,
+                    cex.main = 1, cex.labels = 1, col.main = "black",
+                    col.labels = "black", col.star = "black", dist.labels = 1.1, 
+                    font.labels = 1, radius = 1)
+  
+  effectstars(e_star_risk_ratio,
+              names = c("Intercept",   #name of the star 
+                        "Registered voters", 
+                        "Voted", 
+                        rep("Changed mind", 3), 
+                        "Undecided", 
+                        "Polinterest", 
+                        "Leftmidright", 
+                        "Trust in EP", 
+                        "Trust in NP", 
+                        "Gender", 
+                        "Age", 
+                        rep("Chidren", 3), 
+                        rep("Income", 7), 
+                        rep("Family", 5), 
+                        rep("ISCED", 3)),
+              subs = c("", rep("(yes)", 2),  "(did not change)", "(did not vote)", "(doesn't remember)", "(yes)" , rep("", 4), "(male)",
+                       "", "(2)", "(3+)", "(No)","(500-1000)", "(1000-1500)", "(1500-2000)", "(2000-2500)", "(2500+)" ,"(no income)", "(NA)",
+                       "(divorced with partner)", "(divorced w/o partner)", "(married)", "(single with partner)", "(single w/o partner)", "ISCED3",
+                       "ISCED4", "ISCED8"),
+              #category labels of the predictors 
+              labels = labels, #dependent variable categories
+              
+              control = ctrl) #graphic above
+  
+}
 
-### Political and sociodemographical explanatory variables
-# There are some missing values in sociodemographical variables:
-# Number of cases with missing values:
-length(which(is.na(full_dat$children)))
-# These will be omitted
 
-formula_pol_socio <- as.formula(cluster ~ reg_vote + voted + change + undecided + polinterest.num + leftmidright.num + trust.EP +
-                                  trust.nat.pol + age_num + children + income + family + ISCED)
-
-forest_pol_socio <- rand_forest_res(formula_pol_socio, full_dat, dir ="random_forest_res", "min_depth_pol_socio.png", "multi_importance_pol_socio.png",
-                                    "multi_importance_gini_pol_socio.png", "interactions_pol_socio.png", "interactions_relevant_pol_socio.png")
-forest_pol_socio
-
-# Political and sociodemographical explanatory variables per countries
-forest_pol_socio_France <- rand_forest_res(formula_pol_socio, France, dir ="random_forest_res", "min_depth_pol_socio_fr.png", "multi_importance_pol_socio_fr.png",
-                                           "multi_importance_gini_pol_socio_fr.png", "interactions_pol_socio_fr.png", "interactions_relevant_pol_socio_fr.png")
-forest_pol_socio_UK <- rand_forest_res(formula_pol_socio, UK, dir ="random_forest_res", "min_depth_pol_socio_uk.png", "multi_importance_pol_socio_uk.png",
-                                       "multi_importance_gini_pol_socio_uk.png", "interactions_pol_socio_uk.png", "interactions_relevant_pol_socio_uk.png")
-forest_pol_socio_Germany <- rand_forest_res(formula_pol_socio, Germany, dir ="random_forest_res", "min_depth_pol_socio_de.png", "multi_importance_pol_socio_de.png",
-                                            "multi_importance_gini_pol_socio_de.png", "interactions_pol_socio_de.png", "interactions_relevant_pol_socio_de.png")
-forest_pol_socio_France
-forest_pol_socio_UK 
-forest_pol_socio_Germany
+#Plot political and sociodemographic effectstars
+effectstars_pol_socio(mod_pol_socio)
+effectstars_pol_socio(mod_pol_socio_France)
+effectstars_pol_socio(mod_pol_socio_Germany)
+effectstars_pol_socio(mod_pol_socio_UK)
