@@ -13,7 +13,7 @@ source("ISCED_coding.R")
 source("data_prep.R")
 source("visits_prob.R")
 
-all_cat <- read.csv("predicted_cats/Number_of_visits_all_Category.csv")
+#all_cat <- read.csv("predicted_cats/Number_of_visits_all_Category.csv")
 
 head(all_cat)
 
@@ -238,12 +238,10 @@ str(pol_socio)
 # Effect stars
 library(nnet)
 library(EffectStars2)
-library(graphics)
 
 dir.create("effectstars_extended", showWarnings = FALSE)
 
 #Function to prepare political effectstars
-
 effectstars_pol <- function(model, file)
 {
   filename <- paste("effectstars_extended/", file, ".png", sep = "")
@@ -253,23 +251,35 @@ effectstars_pol <- function(model, file)
   z <- summary(model)$coefficients/summary(model)$standard.errors #z calculation for the regression coefficients
   p <- (1 - pnorm(abs(z), 0, 1)) * 2 #2-tailed z test
   p_values <- formatC(p, format="f", digits=3) #format p
-  labels <- matrix(paste0(rep(c("Search", "Social", "Unknown"), nrow(e_star_risk_ratio)), "\n(", p_values, ")"),
+  labels <- matrix(paste0(rep(c("Routine", "Search", "Social"), nrow(e_star_risk_ratio)), "\n(", p_values, ")"),
                    byrow = T, ncol = 3) #create labels containing the response categories and all p-values
   ctrl <- star.ctrl(lwd.circle = 3, col.circle = "lightblue", #graphical formatting
                     lty.circle = 5, col.fill = "lightgrey", lwd.star = 1.8,
                     cex.main = 1.5, cex.labels = 1.2, col.main = "black",
-                    col.labels = "black", col.star = "black", dist.labels = 1.1, 
+                    col.labels = "black", col.star = "black", dist.labels = 1.1,
                     font.labels = 1, radius = 1)
   png(filename = filename, width=800, height=600)
   effectstars(e_star_risk_ratio,
-              names = c("Intercept", "Registered voters", "Voted", rep("Changed mind", 3), 
-                        "Undecided", "Polinterest", "Leftmidright", "Trust in EP", "Trust in NP"), #name of the star
-              subs = c("", rep("(yes)", 2),  "(did not change)", "(did not vote)", "(doesn't remember)", "(yes)" , rep("", 4)), 
-              #category labels of the predictors 
+              names = c("Intercept", #name of the star
+                        "Registered voters",
+                        "Voted",
+                        rep("Changed mind", 3),
+                        "Undecided",
+                        "Polinterest",
+                        "Leftmidright",
+                        "Trust in EP",
+                        "Trust in NP"),
+              subs = c("",   #category labels of the predictors
+                       rep("(yes)", 2),  
+                       "(did not change)",
+                       "(did not vote)",
+                       "(doesn't remember)",
+                       "(yes)" ,
+                       rep("", 4)),
+              
               labels = labels, #dependent variable categories
               control = ctrl) #graphic above
   dev.off()
-  
   
 }
 
@@ -279,8 +289,18 @@ effectstars_pol(mod_pol_France, "effectstars_pol_Fr")
 effectstars_pol(mod_pol_Germany, "effectstars_po_Ger")
 effectstars_pol(mod_pol_UK, "effectstars_UK")
 
-#Function to prepare political and sociodemographic effectstars
+##Political and sociodemographic variables
 
+# Political and sociodemographical explanatory variables
+formula_pol_socio <- as.formula(cluster ~ reg_vote + voted + change + undecided + polinterest.num + leftmidright.num + trust.EP +
+                                  trust.nat.pol + gender + age_num + children + income + family + ISCED)
+
+mod_pol_socio <- multinom(formula_pol_socio, data = full_dat,
+                          na.action = na.omit, # omit missing observations
+                          Hess = TRUE) #get Hessian observed/expected information matrix
+
+
+# Political and sociodemographical explanatory variables per countries
 effectstars_pol_socio <- function(model, file)
 {
   filename <- paste("effectstars_extended/", file, ".png", sep = "")
@@ -290,35 +310,57 @@ effectstars_pol_socio <- function(model, file)
   z <- summary(model)$coefficients/summary(model)$standard.errors #z calculation for the regression coefficients
   p <- (1 - pnorm(abs(z), 0, 1)) * 2 #2-tailed z test
   p_values <- formatC(p, format="f", digits=3) #format p
-  labels <- matrix(paste0(rep(c("Search", "Social", "Unknown"), nrow(e_star_risk_ratio)), "\n(", p_values, ")"),
+  labels <- matrix(paste0(rep(c("Routine", "Search", "Social"), nrow(e_star_risk_ratio)), "\n(", p_values, ")"),
                    byrow = T, ncol = 3) #create labels containing the response categories and all p-values
   ctrl <- star.ctrl(lwd.circle = 3, col.circle = "lightblue", #graphical formatting
                     lty.circle = 5, col.fill = "lightgrey", lwd.star = 1.8,
                     cex.main = 1, cex.labels = 1, col.main = "black",
-                    col.labels = "black", col.star = "black", dist.labels = 1.1, 
+                    col.labels = "black", col.star = "black", dist.labels = 1.1,
                     font.labels = 1, radius = 1)
   png(filename = filename, width=800, height=600)
   effectstars(e_star_risk_ratio,
-              names = c("Intercept",   #name of the star 
-                        "Registered voters", 
-                        "Voted", 
-                        rep("Changed mind", 3), 
-                        "Undecided", 
-                        "Polinterest", 
-                        "Leftmidright", 
-                        "Trust in EP", 
-                        "Trust in NP", 
-                        "Gender", 
-                        "Age", 
-                        rep("Chidren", 3), 
-                        rep("Income", 7), 
-                        rep("Family", 5), 
+              names = c("Intercept",   #name of the star
+                        "Registered voters",
+                        "Voted",
+                        rep("Changed mind", 3),
+                        "Undecided",
+                        "Polinterest",
+                        "Leftmidright",
+                        "Trust in EP",
+                        "Trust in NP",
+                        "Gender",
+                        "Age",
+                        rep("Chidren", 3),
+                        rep("Income", 7),
+                        rep("Family", 5),
                         rep("ISCED", 3)),
-              subs = c("", rep("(yes)", 2),  "(did not change)", "(did not vote)", "(doesn't remember)", "(yes)" , rep("", 4), "(male)",
-                       "", "(2)", "(3+)", "(No)","(500-1000)", "(1000-1500)", "(1500-2000)", "(2000-2500)", "(2500+)" ,"(no income)", "(NA)",
-                       "(divorced with partner)", "(divorced w/o partner)", "(married)", "(single with partner)", "(single w/o partner)", "ISCED3",
-                       "ISCED4", "ISCED8"),
-              #category labels of the predictors 
+              subs = c("", rep("(yes)", 2),  
+                       "(did not change)",
+                       "(did not vote)",
+                       "(doesn't remember)",
+                       "(yes)" ,
+                       rep("", 4),
+                       "(male)",
+                       "",
+                       "(2)",
+                       "(3+)",
+                       "(No)",
+                       "(500-1000)",
+                       "(1000-1500)",
+                       "(1500-2000)",
+                       "(2000-2500)",
+                       "(2500+)" ,
+                       "(no income)",
+                       "(NA)",
+                       "(divorced with partner)",
+                       "(divorced w/o partner)",
+                       "(married)",
+                       "(single with partner)",
+                       "(single w/o partner)",
+                       "(ISCED3)",
+                       "(ISCED4)",
+                       "(ISCED8)"),
+              #category labels of the predictors
               labels = labels, #dependent variable categories
               
               control = ctrl) #graphic above
